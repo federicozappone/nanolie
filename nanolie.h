@@ -203,22 +203,64 @@ inline Eigen::Matrix<double, 6, 6> SE3_dual_adjoint(const Eigen::Isometry3d& T)
   return dual_adj;
 }
 
-inline Eigen::MatrixXd SE3_left_jacobian(const Eigen::Vector3d& rho)
+inline Eigen::Matrix3d SE3_left_jacobian_Q_matrix(const Vector6d& se3)
 {
+  Eigen::Vector3d rho(se3[3], se3[4], se3[5]);
+  Eigen::Vector3d phi(se3[0], se3[1], se3[2]);
+
+  Eigen::Matrix3d rx = skew(rho);
+  Eigen::Matrix3d px = skew(phi);
+
+  double ph = phi.norm();
+  double ph2 = ph * ph;
+  double ph3 = ph2 * ph;
+  double ph4 = ph3 * ph;
+  double ph5 = ph4 * ph;
+
+  double cph = cos(ph);
+  double sph = sin(ph);
+
+  double m1 = 0.5;
+  double m2 = (ph - sph) / ph3;
+  double m3 = (0.5 * ph2 + cph - 1.) / ph4;
+  double m4 = (ph - 1.5 * sph + 0.5 * ph * cph) / ph5;
+
+  Eigen::Matrix3d t1 = rx;
+  Eigen::Matrix3d t2 = px * rx + rx * px + (px * rx) * px;
+  Eigen::Matrix3d t3 = (px * px) * rx + (rx * px) * px - (3.0 * (px * rx) * px);
+  Eigen::Matrix3d t4 = ((px * rx) * px) * px + ((px * px) * rx) * px;
+
+  return m1 * t1 + m2 * t2 + m3 * t3 + m4 * t4;
+}
+
+inline Eigen::MatrixXd SE3_left_jacobian(const Vector6d& se3)
+{
+  Eigen::Vector3d omega(se3[3], se3[4], se3[5]);
+  Eigen::Vector3d v(se3[0], se3[1], se3[2]);
+
+  Eigen::Matrix3d so3_left_jac = SO3_left_jacobian(omega);
+  Eigen::Matrix3d Q = SE3_left_jacobian_Q_matrix(se3);
+
   Eigen::MatrixXd J(6, 6);
-  J.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity();
-  J.block<3, 3>(3, 3) = Eigen::Matrix3d::Identity();
-  J.block<3, 3>(0, 3) = skew(rho);
+  J.block<3, 3>(0, 0) = so3_left_jac;
+  J.block<3, 3>(3, 3) = so3_left_jac;
+  J.block<3, 3>(0, 3) = Q;
   J.block<3, 3>(3, 0) = Eigen::Matrix3d::Zero();
   return J;
 }
 
-inline Eigen::MatrixXd SE3_inverse_left_jacobian(const Eigen::Vector3d& rho)
+inline Eigen::MatrixXd SE3_inverse_left_jacobian(const Vector6d& se3)
 {
+  Eigen::Vector3d omega(se3[3], se3[4], se3[5]);
+  Eigen::Vector3d v(se3[0], se3[1], se3[2]);
+
+  Eigen::Matrix3d so3_inv_left_jac = SO3_inverse_left_jacobian(omega);
+  Eigen::Matrix3d Q = SE3_left_jacobian_Q_matrix(se3);
+
   Eigen::MatrixXd J_inv(6, 6);
-  J_inv.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity();
-  J_inv.block<3, 3>(3, 3) = Eigen::Matrix3d::Identity();
-  J_inv.block<3, 3>(0, 3) = -skew(rho);
+  J_inv.block<3, 3>(0, 0) = so3_inv_left_jac;
+  J_inv.block<3, 3>(3, 3) = so3_inv_left_jac;
+  J_inv.block<3, 3>(0, 3) = -(so3_inv_left_jac * Q) * so3_inv_left_jac;
   J_inv.block<3, 3>(3, 0) = Eigen::Matrix3d::Zero();
   return J_inv;
 }
