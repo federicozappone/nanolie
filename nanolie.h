@@ -4,6 +4,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+
 typedef Eigen::Matrix<double, 6, 1> Vector6d;
 
 inline Eigen::Matrix3d skew(const Eigen::Vector3d& vec)
@@ -11,6 +12,7 @@ inline Eigen::Matrix3d skew(const Eigen::Vector3d& vec)
   return (Eigen::Matrix3d() << 0.0, -vec[2], vec[1], vec[2], 0.0,
           -vec[0], -vec[1], vec[0], 0.0).finished();
 }
+
 
 inline Eigen::Vector3d SO3_wedge(const Eigen::Matrix3d& Omega)
 {
@@ -113,6 +115,117 @@ inline Eigen::Matrix3d SO3_inverse_left_jacobian(const Eigen::Vector3d& omega)
 
   return J_inv;
 }
+
+Eigen::Matrix3d RPY_to_SO3(const Eigen::Vector3d& rpy)
+{
+  double roll = rpy(0);
+  double pitch = rpy(1);
+  double yaw = rpy(2);
+
+  Eigen::AngleAxisd roll_rotation(roll, Eigen::Vector3d::UnitX());
+  Eigen::AngleAxisd pitch_rotation(pitch, Eigen::Vector3d::UnitY());
+  Eigen::AngleAxisd yaw_rotation(yaw, Eigen::Vector3d::UnitZ());
+
+  Eigen::Matrix3d R = yaw_rotation.matrix() * pitch_rotation.matrix() * roll_rotation.matrix();
+
+  return R;
+}
+
+Eigen::Vector3d SO3_to_RPY(const Eigen::Matrix3d& R)
+{
+  Eigen::Vector3d rpy;
+
+  double roll, pitch, yaw;
+
+  pitch = asin(-R(2, 0));
+
+  if (fabs(pitch - M_PI / 2.0) < 1e-6)
+  {
+    roll = 0;
+    yaw = atan2(R(0, 1), R(0, 2));
+  }
+  else if (fabs(pitch + M_PI / 2.0) < 1e-6)
+  {
+    roll = 0;
+    yaw = atan2(-R(0, 1), -R(0, 2));
+  }
+  else
+  {
+    roll = atan2(R(2, 1), R(2, 2));
+    yaw = atan2(R(1, 0), R(0, 0));
+  }
+
+  rpy << roll, pitch, yaw;
+
+  return rpy;
+}
+
+// Ordering is wxyz
+Eigen::Matrix3d quat_to_SO3(const Eigen::Vector4d& q)
+{
+  Eigen::Matrix3d R;
+  double q0 = q(0);
+  double q1 = q(1);
+  double q2 = q(2);
+  double q3 = q(3);
+
+  R << q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3, 2 * (q1 * q2 - q0 * q3), 2 * (q1 * q3 + q0 * q2),
+       2 * (q1 * q2 + q0 * q3), q0 * q0 - q1 * q1 + q2 * q2 - q3 * q3, 2 * (q2 * q3 - q0 * q1),
+       2 * (q1 * q3 - q0 * q2), 2 * (q2 * q3 + q0 * q1), q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
+
+  return R;
+}
+
+Eigen::Vector4d SO3_to_quat(const Eigen::Matrix3d& R)
+{
+  Eigen::Vector4d q;
+  double trace = R.trace();
+  double r11 = R(0, 0);
+  double r12 = R(0, 1);
+  double r13 = R(0, 2);
+  double r21 = R(1, 0);
+  double r22 = R(1, 1);
+  double r23 = R(1, 2);
+  double r31 = R(2, 0);
+  double r32 = R(2, 1);
+  double r33 = R(2, 2);
+
+  if (trace > 0)
+  {
+    double s = 0.5 / sqrt(trace + 1.0);
+    q(0) = 0.25 / s;
+    q(1) = (r32 - r23) * s;
+    q(2) = (r13 - r31) * s;
+    q(3) = (r21 - r12) * s;
+  }
+  else if (r11 > r22 && r11 > r33)
+  {
+    double s = 2.0 * sqrt(1.0 + r11 - r22 - r33);
+    q(0) = (r32 - r23) / s;
+    q(1) = 0.25 * s;
+    q(2) = (r12 + r21) / s;
+    q(3) = (r13 + r31) / s;
+  }
+  else if (r22 > r33)
+  {
+    double s = 2.0 * sqrt(1.0 + r22 - r11 - r33);
+    q(0) = (r13 - r31) / s;
+    q(1) = (r12 + r21) / s;
+    q(2) = 0.25 * s;
+    q(3) = (r23 + r32) / s;
+  }
+  else
+  {
+    double s = 2.0 * sqrt(1.0 + r33 - r11 - r22);
+    q(0) = (r21 - r12) / s;
+    q(1) = (r13 + r31) / s;
+    q(2) = (r23 + r32) / s;
+    q(3) = 0.25 * s;
+  }
+
+  return q;
+}
+
 
 
 inline Eigen::Matrix4d SE3_wedge(const Eigen::VectorXd& xi)
@@ -233,7 +346,7 @@ inline Eigen::Matrix3d SE3_left_jacobian_Q_matrix(const Vector6d& se3)
   return m1 * t1 + m2 * t2 + m3 * t3 + m4 * t4;
 }
 
-inline Eigen::MatrixXd SE3_left_jacobian(const Vector6d& se3)
+inline Eigen::Matrix<double, 6, 6> SE3_left_jacobian(const Vector6d& se3)
 {
   Eigen::Vector3d omega(se3[3], se3[4], se3[5]);
   Eigen::Vector3d v(se3[0], se3[1], se3[2]);
@@ -241,7 +354,7 @@ inline Eigen::MatrixXd SE3_left_jacobian(const Vector6d& se3)
   Eigen::Matrix3d so3_left_jac = SO3_left_jacobian(omega);
   Eigen::Matrix3d Q = SE3_left_jacobian_Q_matrix(se3);
 
-  Eigen::MatrixXd J(6, 6);
+  Eigen::Matrix<double, 6, 6> J;
   J.block<3, 3>(0, 0) = so3_left_jac;
   J.block<3, 3>(3, 3) = so3_left_jac;
   J.block<3, 3>(0, 3) = Q;
@@ -249,7 +362,7 @@ inline Eigen::MatrixXd SE3_left_jacobian(const Vector6d& se3)
   return J;
 }
 
-inline Eigen::MatrixXd SE3_inverse_left_jacobian(const Vector6d& se3)
+inline Eigen::Matrix<double, 6, 6> SE3_inverse_left_jacobian(const Vector6d& se3)
 {
   Eigen::Vector3d omega(se3[3], se3[4], se3[5]);
   Eigen::Vector3d v(se3[0], se3[1], se3[2]);
@@ -257,7 +370,7 @@ inline Eigen::MatrixXd SE3_inverse_left_jacobian(const Vector6d& se3)
   Eigen::Matrix3d so3_inv_left_jac = SO3_inverse_left_jacobian(omega);
   Eigen::Matrix3d Q = SE3_left_jacobian_Q_matrix(se3);
 
-  Eigen::MatrixXd J_inv(6, 6);
+  Eigen::Matrix<double, 6, 6> J_inv;
   J_inv.block<3, 3>(0, 0) = so3_inv_left_jac;
   J_inv.block<3, 3>(3, 3) = so3_inv_left_jac;
   J_inv.block<3, 3>(0, 3) = -(so3_inv_left_jac * Q) * so3_inv_left_jac;
