@@ -250,11 +250,9 @@ public:
 
   Eigen::Matrix3d matrix() const { return _rot; }
 
-  static SO3 from_matrix(const Eigen::Matrix3d& rot)
+  void from_matrix(const Eigen::Matrix3d& rot)
   {
-    SO3 ret;
-    ret._rot = rot;
-    return ret;
+    _rot = rot;
   }
 
   // operators
