@@ -1,3 +1,10 @@
+/**
+ * @file so3.h
+ * @brief Header file for the SO3 class.
+ *
+ * @author Federico Zappone
+ * @date 2023-07-21
+ */
 #ifndef SO3_H
 #define SO3_H
 

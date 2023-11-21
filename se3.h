@@ -1,3 +1,10 @@
+/**
+ * @file se3.h
+ * @brief Header file for the SE3 class.
+ *
+ * @author Federico Zappone
+ * @date 2023-07-21
+ */
 #ifndef SE3_H
 #define SE3_H
 
