@@ -2,7 +2,6 @@
 #define SE3_H
 
 #include <Eigen/Core>
-#include "Eigen/src/Core/Matrix.h"
 #include "so3.h"
 
 typedef Eigen::Matrix<double, 6, 1> Vector6d;
@@ -10,16 +9,40 @@ typedef Eigen::Matrix<double, 6, 6> Matrix6d;
 
 namespace nanolie {
 
+/**
+ * @brief Represents a 3D rigid body transformation in the Special Euclidean group SE(3).
+ */
 class SE3
 {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
 public:
+  /**
+   * @brief Default constructor. Initializes with zero translation.
+   */
   SE3() : _trans(Eigen::Vector3d::Zero()) {}
+  /**
+   * @brief Copy constructor.
+   * @param other The SE3 object to copy.
+   */
   SE3(const SE3& other) : _rot(other._rot), _trans(other._trans) {}
+  /**
+   * @brief Constructor with rotation matrix and translation vector.
+   * @param rot Rotation matrix.
+   * @param trans Translation vector.
+   */
   SE3(const Eigen::Matrix3d& rot, const Eigen::Vector3d& trans) : _rot(rot), _trans(trans) {}
+  /**
+   * @brief Constructor with 4x4 transformation matrix.
+   * @param mat 4x4 transformation matrix.
+   */
   SE3(const Eigen::Matrix4d& mat) : _rot(mat.block<3, 3>(0, 0)), _trans(mat.block<3, 1>(0, 3)) {}
 
+  /**
+   * @brief Computes the wedge operator of a 6x1 vector.
+   * @param xi 6x1 vector.
+   * @return 4x4 matrix representing the wedge operator.
+   */
   static Eigen::Matrix4d wedge(const Vector6d& xi)
   {
     Eigen::Matrix4d Omega;
@@ -32,6 +55,11 @@ public:
     return Omega;
   }
 
+  /**
+   * @brief Computes the vee operator of a 4x4 matrix.
+   * @param T 4x4 matrix.
+   * @return 6x1 vector representing the vee operator.
+   */
   static Vector6d vee(const Eigen::Matrix4d& T)
   {
     Vector6d xi;
@@ -39,6 +67,11 @@ public:
     return xi;
   }
 
+  /**
+   * @brief Computes the exponential map for an element in the Lie algebra se(3).
+   * @param se3 6x1 vector in se(3).
+   * @return Corresponding SE3 element.
+   */
   static SE3 exp(const Vector6d& se3)
   {
     SE3 ret;
@@ -51,6 +84,10 @@ public:
     return ret;
   }
 
+  /**
+   * @brief Computes the inverse of the current SE3 element.
+   * @return Inverse of the SE3 element.
+   */
   Vector6d log() const
   {
     Eigen::Vector3d p = _trans;
@@ -64,6 +101,10 @@ public:
     return se3;
   }
 
+  /**
+   * @brief Computes the inverse of the current SE3 element.
+   * @return Inverse of the SE3 element.
+   */
   SE3 inverse()
   {
     SE3 T_inv;
@@ -72,6 +113,10 @@ public:
     return T_inv;
   }
 
+  /**
+   * @brief Computes the adjoint matrix of the current SE3 element.
+   * @return 6x6 adjoint matrix.
+   */
   Matrix6d adjoint() const
   {
     Matrix6d adj;
@@ -82,6 +127,10 @@ public:
     return adj;
   }
 
+  /**
+   * @brief Computes the dual adjoint matrix of the current SE3 element.
+   * @return 6x6 dual adjoint matrix.
+   */
   Matrix6d dual_adjoint() const
   {
     Matrix6d dual_adj;
@@ -92,6 +141,11 @@ public:
     return dual_adj;
   }
 
+  /**
+   * @brief Computes the left Jacobian matrix for a given 6x1 vector in se(3).
+   * @param se3 6x1 vector in se(3).
+   * @return 6x6 left Jacobian matrix.
+   */
   static Matrix6d left_jacobian(const Vector6d& se3)
   {
     Eigen::Vector3d omega(se3[3], se3[4], se3[5]);
@@ -108,6 +162,11 @@ public:
     return J;
   }
 
+  /**
+   * @brief Computes the inverse left Jacobian matrix for a given 6x1 vector in se(3).
+   * @param se3 6x1 vector in se(3).
+   * @return 6x6 inverse left Jacobian matrix.
+   */
   static Matrix6d inverse_left_jacobian(const Vector6d& se3)
   {
     Eigen::Vector3d omega(se3[3], se3[4], se3[5]);
@@ -124,6 +183,10 @@ public:
     return J_inv;
   }
 
+  /**
+   * @brief Returns the 4x4 homogeneous transformation matrix for the current SE3 element.
+   * @return 4x4 homogeneous transformation matrix.
+   */
   Eigen::Matrix4d matrix() const
   {
     Eigen::Matrix4d ret = Eigen::Matrix4d::Zero();
@@ -133,6 +196,11 @@ public:
     return ret;
   }
 
+  /**
+   * @brief Creates an SE3 element from a 4x4 homogeneous transformation matrix.
+   * @param rhs 4x4 homogeneous transformation matrix.
+   * @return Corresponding SE3 element.
+   */
   static SE3 from_matrix(const Eigen::Matrix4d& rhs)
   {
     SE3 ret;
@@ -141,13 +209,37 @@ public:
     return ret;
   }
 
+  /**
+   * @brief Gets the rotation component of the SE3 element.
+   * @return SO3 rotation element.
+   */
   SO3 get_rotation() const { return _rot; }
+  /**
+   * @brief Gets the translation component of the SE3 element.
+   * @return Translation vector.
+   */
   Eigen::Vector3d get_translation() const { return _trans; }
 
+  /**
+   * @brief Sets the rotation component of the SE3 element.
+   * @param rot SO3 rotation element.
+   */
   void set_rotation(const SO3& rot) { _rot = rot; }
+  /**
+   * @brief Sets the rotation component of the SE3 element using a rotation matrix.
+   * @param rot Rotation matrix.
+   */
   void set_rotation(const Eigen::Matrix3d& rot) { _rot.from_matrix(rot); }
+  /**
+   * @brief Sets the translation component of the SE3 element.
+   * @param trans Translation vector.
+   */
   void set_translation(const Eigen::Vector3d& trans) { _trans = trans; }
 
+  /**
+   * @brief Perturbs the current SE3 element by a given 6x1 vector in se(3).
+   * @param se3 6x1 vector in se(3).
+   */
   void perturbate(const Vector6d& se3)
   {
     SE3 perturbed = SE3::exp(se3) * (*this);
@@ -156,7 +248,12 @@ public:
   }
 
   // operators
-
+  
+  /**
+   * @brief Assignment operator.
+   * @param rhs SE3 element to assign.
+   * @return Reference to the assigned SE3 element.
+   */
   SE3 operator=(const SE3& rhs)
   {
     this->_rot = rhs._rot;
@@ -164,19 +261,42 @@ public:
     return *this;
   }
 
+  /**
+   * @brief Compound assignment operator for multiplying with another SE3 element.
+   * @param rhs SE3 element to multiply.
+   * @return Reference to the modified SE3 element.
+   */
   SE3 operator*=(const SE3& rhs)
   {
     *this = SE3::from_matrix(this->matrix() * rhs.matrix());
     return *this;
   }
 
+  /**
+   * @brief Multiplication operator for two SE3 elements.
+   * @param lhs Left-hand side SE3 element.
+   * @param rhs Right-hand side SE3 element.
+   * @return Result of the multiplication.
+   */
   friend SE3 operator*(SE3 lhs, const SE3& rhs) { return lhs *= rhs; }
 
+  /**
+   * @brief Multiplication operator for an SE3 element and a 4x1 vector.
+   * @param lhs SE3 element.
+   * @param rhs 4x1 vector.
+   * @return Result of the multiplication.
+   */
   friend Eigen::Vector4d operator*(const SE3& lhs, const Eigen::Vector4d& rhs)
   {
     return lhs.matrix() * rhs;
   }
 
+  /**
+   * @brief Multiplication operator for an SE3 element and a 3x1 vector.
+   * @param lhs SE3 element.
+   * @param rhs 3x1 vector.
+   * @return Result of the multiplication.
+   */
   friend Eigen::Vector3d operator*(const SE3& lhs, const Eigen::Vector3d& rhs)
   {
     Eigen::Vector4d rhs_homo = Eigen::Vector4d::Ones();
@@ -186,6 +306,11 @@ public:
   }
 
 private:
+  /**
+   * @brief Helper function to compute a part of the left Jacobian Q matrix.
+   * @param se3 6x1 vector in se(3).
+   * @return 3x3 matrix.
+   */
   static Eigen::Matrix3d _left_jacobian_Q_matrix(const Vector6d& se3)
   {
     Eigen::Vector3d rho(se3[3], se3[4], se3[5]);
@@ -216,8 +341,8 @@ private:
     return m1 * t1 + m2 * t2 + m3 * t3 + m4 * t4;
   }
 
-  SO3 _rot;
-  Eigen::Vector3d _trans;
+  SO3 _rot;                  ///< Rotation component.
+  Eigen::Vector3d _trans;    ///< Translation component.
 };
 
 }  // namespace nanolie

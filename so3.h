@@ -6,15 +6,34 @@
 
 namespace nanolie {
 
+/**
+ * @brief Represents a 3D rotation in the Special Orthogonal group SO(3).
+ */
 class SO3
 {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
 public:
+  /**
+   * @brief Default constructor. Initializes with the identity rotation.
+   */
   SO3() : _rot(Eigen::Matrix3d::Identity()) {}
+  /**
+   * @brief Copy constructor.
+   * @param lhs The SO3 object to copy.
+   */
   SO3(const SO3& lhs) : _rot(lhs._rot) {}
+  /**
+   * @brief Constructor with a rotation matrix.
+   * @param rot Rotation matrix.
+   */
   SO3(const Eigen::Matrix3d& rot) : _rot(rot) {}
 
+  /**
+   * @brief Computes the wedge operator of a 3x1 vector.
+   * @param omega 3x1 vector.
+   * @return 3x3 matrix representing the wedge operator.
+   */
   static Eigen::Matrix3d wedge(const Eigen::Vector3d& omega)
   {
     // clang-format off
@@ -24,11 +43,21 @@ public:
     // clang-format on
   }
 
+  /**
+   * @brief Computes the vee operator of a 3x3 matrix.
+   * @param Omega 3x3 matrix.
+   * @return 3x1 vector representing the vee operator.
+   */
   static Eigen::Vector3d vee(const Eigen::Matrix3d& Omega)
   {
     return (Eigen::Vector3d() << Omega(2, 1), Omega(0, 2), Omega(1, 0)).finished();
   }
 
+  /**
+   * @brief Computes the exponential map for an element in the Lie algebra so(3).
+   * @param omega 3x1 vector in so(3).
+   * @return Corresponding SO3 element.
+   */
   static SO3 exp(const Eigen::Vector3d& omega)
   {
     Eigen::Matrix3d Omega = SO3::wedge(omega);
@@ -48,6 +77,10 @@ public:
     return ret;
   }
 
+  /**
+   * @brief Computes the logarithmic map for the current SO3 element.
+   * @return 3x1 vector in so(3).
+   */
   Eigen::Vector3d log() const
   {
     Eigen::Vector3d omega;
@@ -70,6 +103,10 @@ public:
     return omega;
   }
 
+  /**
+   * @brief Computes the logarithmic map for the current SO3 element.
+   * @return 3x1 vector in so(3).
+   */
   SO3 inverse() const
   {
     SO3 ret;
@@ -77,6 +114,11 @@ public:
     return ret;
   }
 
+  /**
+   * @brief Creates an SO3 element from roll, pitch, and yaw angles.
+   * @param rpy Roll, pitch, and yaw angles in radians.
+   * @return Corresponding SO3 element.
+   */
   static SO3 from_rpy(const Eigen::Vector3d& rpy)
   {
     SO3 ret;
@@ -94,6 +136,10 @@ public:
     return ret;
   }
 
+  /**
+   * @brief Converts the current SO3 element to roll, pitch, and yaw angles.
+   * @return Roll, pitch, and yaw angles in radians.
+   */
   Eigen::Vector3d to_rpy() const
   {
     Eigen::Vector3d rpy;
@@ -123,7 +169,11 @@ public:
     return rpy;
   }
 
-  // Ordering is wxyz
+ /**
+   * @brief Creates an SO3 element from a quaternion.
+   * @param q Quaternion in the order [w, x, y, z].
+   * @return Corresponding SO3 element.
+   */
   static SO3 from_quat(const Eigen::Vector4d& q)
   {
     SO3 ret;
@@ -153,7 +203,10 @@ public:
     return ret;
   }
 
-  // Ordering is wxyz
+  /**
+   * @brief Converts the current SO3 element to a quaternion.
+   * @return Quaternion in the order [w, x, y, z].
+   */
   Eigen::Vector4d to_quat() const
   {
     Eigen::Vector4d q;
@@ -208,6 +261,11 @@ public:
     return q;
   }
 
+  /**
+   * @brief Computes the left Jacobian matrix for a given 3x1 vector in so(3).
+   * @param omega 3x1 vector in so(3).
+   * @return 3x3 left Jacobian matrix.
+   */
   static Eigen::Matrix3d left_jacobian(const Eigen::Vector3d& omega)
   {
     Eigen::Matrix3d J = Eigen::Matrix3d::Zero();
@@ -230,6 +288,11 @@ public:
     return J;
   }
 
+  /**
+   * @brief Computes the inverse left Jacobian matrix for a given 3x1 vector in so(3).
+   * @param omega 3x1 vector in so(3).
+   * @return 3x3 inverse left Jacobian matrix.
+   */
   static Eigen::Matrix3d inverse_left_jacobian(const Eigen::Vector3d& omega)
   {
     Eigen::Matrix3d J_inv = Eigen::Matrix3d::Zero();
@@ -253,30 +316,59 @@ public:
     return J_inv;
   }
 
+  /**
+   * @brief Returns the rotation matrix of the current SO3 element.
+   * @return 3x3 rotation matrix.
+   */
   Eigen::Matrix3d matrix() const { return _rot; }
-
+  /**
+   * @brief Sets the rotation matrix of the SO3 element.
+   * @param rot Rotation matrix.
+   */
   void from_matrix(const Eigen::Matrix3d& rot) { _rot = rot; }
 
   // operators
 
+  /**
+   * @brief Assignment operator.
+   * @param rhs SO3 element to assign.
+   * @return Reference to the assigned SO3 element.
+   */
   SO3 operator=(const SO3& rhs)
   {
     _rot = rhs._rot;
     return *this;
   }
 
+  /**
+   * @brief Compound assignment operator for multiplying with another SO3 element.
+   * @param rhs SO3 element to multiply.
+   * @return Reference to the modified SO3 element.
+   */
   SO3 operator*=(const SO3& rhs)
   {
     _rot *= rhs._rot;
     return *this;
   }
 
+  /**
+   * @brief Multiplication operator for two SO3 elements.
+   * @param lhs Left-hand side SO3 element.
+   * @param rhs Right-hand side SO3 element.
+   * @return Result of the multiplication.
+   */
   friend SO3 operator*(SO3 lhs, const SO3& rhs) { return lhs *= rhs; }
 
+  /**
+   * @brief Multiplication operator for two SO3 elements.
+   * @param lhs Left-hand side SO3 element.
+   * @param rhs Right-hand side SO3 element.
+   * @return Result of the multiplication.
+   */
   friend Eigen::Vector3d operator*(Eigen::Vector3d lhs, const SO3& rhs) { return rhs._rot * lhs; }
 
 private:
-  Eigen::Matrix3d _rot;
+  Eigen::Matrix3d _rot;  ///< Rotation matrix.
 };
 
 }  // namespace nanolie
