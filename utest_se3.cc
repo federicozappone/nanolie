@@ -4,6 +4,7 @@
 
 using namespace std;
 using namespace Eigen;
+using namespace nanolie;
 
 TEST(SE3Test, SE3WedgeVeeTest)
 {
