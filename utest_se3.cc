@@ -1,4 +1,5 @@
 #include <iostream>
+
 #include <gtest/gtest.h>
 #include "se3.h"
 
@@ -42,8 +43,13 @@ TEST(SE3Test, SE3MatrixTest)
 {
   Vector6d se3(1.0, 2.0, 3.0, 0.1, 0.15, 0.02);
   Matrix4d T = SE3::exp(se3).matrix();
-
   ASSERT_TRUE(SE3::from_matrix(T).matrix().isApprox(T));
+
+  SE3 fm(T);
+  ASSERT_TRUE(fm.matrix().isApprox(T));
+
+  SE3 frt(fm.get_rotation().matrix(), fm.get_translation());
+  ASSERT_TRUE(frt.matrix().isApprox(fm.matrix()));
 }
 
 int main(int argc, char** argv)

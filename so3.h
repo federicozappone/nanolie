@@ -13,6 +13,7 @@ class SO3
 public:
   SO3() : _rot(Eigen::Matrix3d::Identity()) {}
   SO3(const SO3& lhs) : _rot(lhs._rot) {}
+  SO3(const Eigen::Matrix3d& rot) : _rot(rot) {}
 
   static Eigen::Matrix3d wedge(const Eigen::Vector3d& omega)
   {

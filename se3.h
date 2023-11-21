@@ -1,6 +1,8 @@
 #ifndef SE3_H
 #define SE3_H
 
+#include <Eigen/Core>
+#include "Eigen/src/Core/Matrix.h"
 #include "so3.h"
 
 typedef Eigen::Matrix<double, 6, 1> Vector6d;
@@ -14,7 +16,9 @@ class SE3
 
 public:
   SE3() : _trans(Eigen::Vector3d::Zero()) {}
-  SE3(const SE3& lhs) : _rot(lhs._rot), _trans(lhs._trans) {}
+  SE3(const SE3& other) : _rot(other._rot), _trans(other._trans) {}
+  SE3(const Eigen::Matrix3d& rot, const Eigen::Vector3d& trans) : _rot(rot), _trans(trans) {}
+  SE3(const Eigen::Matrix4d& mat) : _rot(mat.block<3, 3>(0, 0)), _trans(mat.block<3, 1>(0, 3)) {}
 
   static Eigen::Matrix4d wedge(const Vector6d& xi)
   {
@@ -136,6 +140,13 @@ public:
     ret._trans = rhs.block<3, 1>(0, 3);
     return ret;
   }
+
+  SO3 get_rotation() const { return _rot; }
+  Eigen::Vector3d get_translation() const { return _trans; }
+
+  void set_rotation(const SO3& rot) { _rot = rot; }
+  void set_rotation(const Eigen::Matrix3d& rot) { _rot.from_matrix(rot); }
+  void set_translation(const Eigen::Vector3d& trans) { _trans = trans; }
 
   void perturbate(const Vector6d& se3)
   {
