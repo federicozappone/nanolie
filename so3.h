@@ -4,18 +4,23 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+namespace nanolie {
 
 class SO3
 {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
 public:
-  SO3() : _rot(Eigen::Matrix3d::Identity()) { }
-  SO3(const SO3& lhs) : _rot(lhs._rot) { }
+  SO3() : _rot(Eigen::Matrix3d::Identity()) {}
+  SO3(const SO3& lhs) : _rot(lhs._rot) {}
 
   static Eigen::Matrix3d wedge(const Eigen::Vector3d& omega)
   {
-    return (Eigen::Matrix3d() << 0.0, -omega[2], omega[1], omega[2], 0.0, -omega[0], -omega[1],
-            omega[0], 0.0)
-        .finished();
+    // clang-format off
+    return (Eigen::Matrix3d() << 0.0, -omega[2], omega[1],
+                                omega[2], 0.0, -omega[0], 
+                                -omega[1], omega[0], 0.0).finished();
+    // clang-format on
   }
 
   static Eigen::Vector3d vee(const Eigen::Matrix3d& Omega)
@@ -213,13 +218,12 @@ public:
     }
     else
     {
-        Eigen::Vector3d axis = omega / theta;
-        double s = std::sin(theta);
-        double c = std::cos(theta);
+      Eigen::Vector3d axis = omega / theta;
+      double s = std::sin(theta);
+      double c = std::cos(theta);
 
-        J = (s / theta) * Eigen::Matrix3d::Identity() +
-            (1.0 - s / theta) * (axis * axis.transpose()) +
-            ((1.0 - c) / theta) * SO3::wedge(axis);
+      J = (s / theta) * Eigen::Matrix3d::Identity() +
+          (1.0 - s / theta) * (axis * axis.transpose()) + ((1.0 - c) / theta) * SO3::wedge(axis);
     }
 
     return J;
@@ -241,8 +245,8 @@ public:
       double cot_half_angle = 1.0 / std::tan(half_angle);
 
       J_inv = half_angle * cot_half_angle * Eigen::Matrix3d::Identity() +
-            (1.0 - half_angle * cot_half_angle) * (axis * axis.transpose()) -
-            half_angle * SO3::wedge(axis);
+              (1.0 - half_angle * cot_half_angle) * (axis * axis.transpose()) -
+              half_angle * SO3::wedge(axis);
     }
 
     return J_inv;
@@ -250,10 +254,7 @@ public:
 
   Eigen::Matrix3d matrix() const { return _rot; }
 
-  void from_matrix(const Eigen::Matrix3d& rot)
-  {
-    _rot = rot;
-  }
+  void from_matrix(const Eigen::Matrix3d& rot) { _rot = rot; }
 
   // operators
 
@@ -276,5 +277,7 @@ public:
 private:
   Eigen::Matrix3d _rot;
 };
+
+}  // namespace nanolie
 
 #endif  // SO3_H
