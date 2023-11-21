@@ -6,19 +6,25 @@
 typedef Eigen::Matrix<double, 6, 1> Vector6d;
 typedef Eigen::Matrix<double, 6, 6> Matrix6d;
 
+namespace nanolie {
+
 class SE3
 {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
 public:
-  SE3() = default;
-  SE3(const SE3& lhs) : _rot(lhs._rot), _trans(lhs._trans) { }
+  SE3() : _trans(Eigen::Vector3d::Zero()) {}
+  SE3(const SE3& lhs) : _rot(lhs._rot), _trans(lhs._trans) {}
 
   static Eigen::Matrix4d wedge(const Vector6d& xi)
   {
     Eigen::Matrix4d Omega;
+    // clang-format off
     Omega << 0.0, -xi(2), xi(1), xi(3),
              xi(2), 0.0, -xi(0), xi(4),
             -xi(1), xi(0), 0.0, xi(5),
              0.0, 0.0, 0.0, 0.0;
+    // clang-format on
     return Omega;
   }
 
@@ -88,7 +94,7 @@ public:
     Eigen::Vector3d v(se3[0], se3[1], se3[2]);
 
     Eigen::Matrix3d so3_left_jac = SO3::left_jacobian(omega);
-    Eigen::Matrix3d Q = SE3::left_jacobian_Q_matrix(se3);
+    Eigen::Matrix3d Q = SE3::_left_jacobian_Q_matrix(se3);
 
     Matrix6d J;
     J.block<3, 3>(0, 0) = so3_left_jac;
@@ -104,7 +110,7 @@ public:
     Eigen::Vector3d v(se3[0], se3[1], se3[2]);
 
     Eigen::Matrix3d so3_inv_left_jac = SO3::inverse_left_jacobian(omega);
-    Eigen::Matrix3d Q = SE3::left_jacobian_Q_matrix(se3);
+    Eigen::Matrix3d Q = SE3::_left_jacobian_Q_matrix(se3);
 
     Matrix6d J_inv;
     J_inv.block<3, 3>(0, 0) = so3_inv_left_jac;
@@ -116,7 +122,7 @@ public:
 
   Eigen::Matrix4d matrix() const
   {
-    Eigen::Matrix4d ret;
+    Eigen::Matrix4d ret = Eigen::Matrix4d::Zero();
     ret.block<3, 3>(0, 0) = _rot.matrix();
     ret.block<3, 1>(0, 3) = _trans;
     ret(3, 3) = 1.0;
@@ -131,7 +137,7 @@ public:
     return ret;
   }
 
-  void perturbate(const Vector6d & se3)
+  void perturbate(const Vector6d& se3)
   {
     SE3 perturbed = SE3::exp(se3) * (*this);
     _rot = perturbed._rot;
@@ -155,13 +161,21 @@ public:
 
   friend SE3 operator*(SE3 lhs, const SE3& rhs) { return lhs *= rhs; }
 
-  friend Eigen::Vector4d operator*(Eigen::Vector4d lhs, const SE3& rhs)
+  friend Eigen::Vector4d operator*(const SE3& lhs, const Eigen::Vector4d& rhs)
   {
-    return rhs.matrix() * lhs;
+    return lhs.matrix() * rhs;
+  }
+
+  friend Eigen::Vector3d operator*(const SE3& lhs, const Eigen::Vector3d& rhs)
+  {
+    Eigen::Vector4d rhs_homo = Eigen::Vector4d::Ones();
+    rhs_homo.head(3) = rhs;
+    Eigen::Vector4d res = lhs.matrix() * rhs_homo;
+    return res.head(3) / res[3];
   }
 
 private:
-  static Eigen::Matrix3d left_jacobian_Q_matrix(const Vector6d& se3)
+  static Eigen::Matrix3d _left_jacobian_Q_matrix(const Vector6d& se3)
   {
     Eigen::Vector3d rho(se3[3], se3[4], se3[5]);
     Eigen::Vector3d phi(se3[0], se3[1], se3[2]);
@@ -194,5 +208,7 @@ private:
   SO3 _rot;
   Eigen::Vector3d _trans;
 };
+
+}  // namespace nanolie
 
 #endif  // SE3_H
