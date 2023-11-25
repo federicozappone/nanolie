@@ -372,7 +372,7 @@ public:
    * @param rhs Right-hand side SO3 element.
    * @return Result of the multiplication.
    */
-  friend Eigen::Vector3d operator*(Eigen::Vector3d lhs, const SO3& rhs) { return rhs._rot * lhs; }
+  friend Eigen::Vector3d operator*(const SO3& lhs, Eigen::Vector3d rhs) { return lhs._rot * rhs; }
 
 private:
   Eigen::Matrix3d _rot;  ///< Rotation matrix.
